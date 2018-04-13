@@ -9,7 +9,7 @@ nunjucks.configure(`${path.resolve(__dirname, './View/').replace(/\\/gmi, '/')}/
 const MainApp = Backbone.View.extend({
     el: 'body',
 
-    // DATA•
+    // DATA
     oArgs: null,
 
     events: {
