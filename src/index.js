@@ -29,7 +29,7 @@ const createWindow = () => {
     mainWindow.loadURL(`file://${__dirname}/index.html`);
 
     if (args.get("debug")) {
-        mainWindow.webContents.openDevTools();
+        mainWindow.webContents.openDevTools({mode: 'detach'});
     }
 
     mainWindow.on('closed', () => {
