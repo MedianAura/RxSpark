@@ -10,7 +10,7 @@ module.exports = Backbone.View.extend({
 
 
     events: {
-
+        "paste .CodeMirror": "eventPasteCode"
     },
 
     initialize: function () {
@@ -29,6 +29,23 @@ module.exports = Backbone.View.extend({
     },
     render: function () {
         this.$el.html(nunjucks.render(this.template));
+
+        console.log(CodeMirror.modes);
+        CodeMirror.fromTextArea($("#form-json-intrant")[0], {
+            lineNumbers: true,
+            mode: "javascript",
+            smartIndent: true,
+            tabSize: 4,
+            foldGutter: true
+        });
+
+        CodeMirror.fromTextArea($("#form-json-extrant")[0], {
+            lineNumbers: true,
+            mode: "javascript",
+            smartIndent: true,
+            tabSize: 4,
+            foldGutter: true
+        });
     },
 
     // PUBLIC
@@ -36,5 +53,9 @@ module.exports = Backbone.View.extend({
     // PRIVATE
 
     // EVENTS
-
+    eventPasteCode: function (event) {
+        let $el = $(event.target).closest(".CodeMirror")[0].CodeMirror;
+        let oJSON = JSON.parse(event.originalEvent.clipboardData.getData('text'));
+        $el.setValue(JSON.stringify(oJSON, null, "    "));
+    }
 });
