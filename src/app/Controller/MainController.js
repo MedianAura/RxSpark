@@ -3,6 +3,8 @@ const nunjucks = require("nunjucks");
 const lodash = require("lodash");
 const jetpack = require('fs-jetpack');
 const $ = require("jquery");
+const {clipboard} = require('electron').remote;
+
 let CodeMirror = require("codemirror");
 require("../../../node_modules/codemirror/mode/javascript/javascript");
 
@@ -15,21 +17,12 @@ module.exports = Backbone.View.extend({
     oExtrant: null,
 
     events: {
-
+        "click .btn-copy": "eventClickCopyBtnIntrant",
+        "click .btn-paste": "eventClickPasteBtnIntrant",
+        "click .btn-empty": "eventClickClearBtnIntrant",
     },
 
     initialize: function () {
-        this.oCurrentCriteria = null;
-
-        // // Ensure our methods keep the `this` reference to the view itself
-        // lodash.bindAll(this, 'renderList');
-        //
-        // // Bind collection changes to re-rendering
-        // this.oListCriteria.on('change', this.renderList);
-        // this.oListCriteria.on('reset', this.renderList);
-        // this.oListCriteria.on('add', this.renderList);
-        // this.oListCriteria.on('remove', this.renderList);
-
         this.render();
     },
     render: function () {
@@ -41,25 +34,26 @@ module.exports = Backbone.View.extend({
     // PUBLIC
 
     // PRIVATE
+    __readJSONFile: function (sFilePath) {
+        let sContent = jetpack.read(sFilePath);
+        if (lodash.isUndefined(sContent)) return null;
+        return sContent;
+    },
     __updateJSONValue: function (CodeMirror, oJson) {
+        if (lodash.isNull(oJson)) return;
         CodeMirror.setValue(JSON.stringify(oJson, null, "    "));
     },
-    __buildIntrantCodeMirror: function () {
-        this.oIntrant = CodeMirror.fromTextArea($("#form-json-intrant")[0], {
-            lineNumbers: true,
-            mode: "javascript",
-            smartIndent: true,
-            tabSize: 4,
-            foldGutter: true,
-        });
-
-        if (!lodash.isUndefined(this.oIntrant)) {
-            this.oIntrant.on("paste", this.eventPasteIntrant.bind(this));
-            this.oIntrant.on("drop", this.eventDropIntrant.bind(this));
+    __ConvertTextToJSON: function (sText) {
+        if (lodash.isNull(sText)) return null;
+        try {
+            return JSON.parse(sText);
+        } catch (e) {
+            return null;
         }
     },
-    __buildExtrantCodeMirror: function () {
-        this.oExtrant = CodeMirror.fromTextArea($("#form-json-extrant")[0], {
+    __buildIntrantCodeMirror: function () {
+        let $el = $("#form-json-intrant");
+        this.oIntrant = CodeMirror.fromTextArea($el[0], {
             lineNumbers: true,
             mode: "javascript",
             smartIndent: true,
@@ -67,24 +61,33 @@ module.exports = Backbone.View.extend({
             foldGutter: true,
         });
 
-        if (!lodash.isUndefined(this.oExtrant)) {
-            this.oExtrant.on("paste", this.eventPasteIntrant.bind(this));
-            this.oExtrant.on("drop", this.eventDragDiable.bind(this));
-            this.oExtrant.on("dragstart", this.eventDragDiable.bind(this));
-            this.oExtrant.on("dragenter", this.eventDragDiable.bind(this));
-            this.oExtrant.on("dragover", this.eventDragDiable.bind(this));
-            this.oExtrant.on("dragleave", this.eventDragDiable.bind(this));
-        }
+        $el.next(".CodeMirror").prop("id", "CodeMirror-Intrant");
+        this.oIntrant.on("paste", this.eventPasteIntrant.bind(this));
+        this.oIntrant.on("drop", this.eventDropIntrant.bind(this));
+    },
+    __buildExtrantCodeMirror: function () {
+        let $el = $("#form-json-extrant");
+        this.oExtrant = CodeMirror.fromTextArea($el[0], {
+            lineNumbers: true,
+            mode: "javascript",
+            smartIndent: true,
+            tabSize: 4,
+            foldGutter: true,
+        });
+
+        this.oExtrant.on("paste", this.eventPasteIntrant.bind(this));
+        this.oExtrant.on("drop", this.eventDragDisable.bind(this));
+        this.oExtrant.on("dragstart", this.eventDragDisable.bind(this));
+        this.oExtrant.on("dragenter", this.eventDragDisable.bind(this));
+        this.oExtrant.on("dragover", this.eventDragDisable.bind(this));
+        this.oExtrant.on("dragleave", this.eventDragDisable.bind(this));
     },
 
     // EVENTS
     eventPasteIntrant: function (CodeMirror, event) {
-        try {
-            let oJSON = JSON.parse(event.originalEvent.clipboardData.getData('text'));
-            this.__updateJSONValue(CodeMirror, oJSON);
-        } catch (e) {
-            console.error(e);
-        }
+        event.preventDefault();
+        this.__updateJSONValue(CodeMirror, this.__ConvertTextToJSON(event.clipboardData.getData('text')));
+        return false;
     },
     eventDropIntrant: function (CodeMirror, event) {
         event.stopPropagation();
@@ -92,20 +95,27 @@ module.exports = Backbone.View.extend({
         let aFiles = event.dataTransfer.files;
         if (aFiles.length !== 1) return;
 
-        let sContent = jetpack.read(aFiles[0].path);
-        if (lodash.isUndefined(sContent)) return;
+        let sContent = this.__readJSONFile(aFiles[0].path);
 
-        try {
-            let oJSON = JSON.parse(sContent);
-            this.__updateJSONValue(CodeMirror, oJSON);
-        } catch (e) {
-            console.error(e);
-        }
+        this.__updateJSONValue(CodeMirror, this.__ConvertTextToJSON(sContent));
 
         return false;
     },
-    eventDragDiable: function (CodeMirror, event) {
+    eventDragDisable: function (CodeMirror, event) {
         event.preventDefault();
         return false;
+    },
+    eventClickCopyBtnIntrant: function () {
+        let sText = this.oIntrant.getValue();
+        if (lodash.isEmpty(sText.trim())) return false;
+        clipboard.writeText(sText, "text");
+    },
+    eventClickPasteBtnIntrant: function () {
+        let sText = this.oIntrant.getValue();
+        if (!lodash.isEmpty(sText.trim())) return false;
+        this.__updateJSONValue(this.oIntrant, this.__ConvertTextToJSON(clipboard.readText("text")));
+    },
+    eventClickClearBtnIntrant: function () {
+        this.oIntrant.setValue("");
     },
 });
