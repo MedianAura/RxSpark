@@ -1,4 +1,4 @@
-import {app, BrowserWindow} from 'electron';
+const {app, BrowserWindow} = require("electron");
 const {ArgumentParser} = require("argparse");
 
 if (require('electron-squirrel-startup')) { // eslint-disable-line global-require
@@ -8,15 +8,21 @@ if (require('electron-squirrel-startup')) { // eslint-disable-line global-requir
 let parser = new ArgumentParser({
     version: require("../package").version,
     addHelp: true,
-    description: require("../package").description
+    description: require("../package").description,
+    prog: require("../package").name
 });
 
 parser.addArgument(
     ['-d', '--debug'],
-    {help: 'Active le mode debug.', defaultValue: false, action: "storeTrue"}
+    {help: 'Active le mode debug.', defaultValue: false, action: "storeTrue", required : false}
 );
 
-let args = parser.parseArgs();
+if (process.argv.join(" ").indexOf("electron") > -1) {
+    process.argv.splice(0, 2);
+}
+let result = parser.parseKnownArgs(process.argv);
+let args = result[0];
+
 let mainWindow;
 
 const createWindow = () => {
@@ -28,7 +34,7 @@ const createWindow = () => {
     global.args = args;
     mainWindow.loadURL(`file://${__dirname}/index.html`);
 
-    if (args.get("debug")) {
+    if (args.debug) {
         mainWindow.webContents.openDevTools({mode: 'detach'});
     }
 

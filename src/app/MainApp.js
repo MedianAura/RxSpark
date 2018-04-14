@@ -15,23 +15,40 @@ const MainApp = Backbone.View.extend({
     oArgs: null,
     oMainController: null,
 
-    events: {},
+    events: {
+    },
 
     initialize: function () {
         this.oArgs = remote.getGlobal('args');
         this.oMainController = new MainController();
-    },
-    render: function () {
+
+        document.addEventListener('dragstart', function (event) {
+            event.preventDefault();
+            event.dataTransfer.effectAllowed = "none";
+            return false;
+        });
+        document.addEventListener('dragenter', function (event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "none";
+            return false;
+        });
+        document.addEventListener('dragover', function (event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "none";
+            return false;
+        });
+        document.addEventListener('drop', function (event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "none";
+            return false;
+        });
     },
 
     // PUBLIC
 
-
     // PRIVATE
 
-
     // EVENTS
-
 });
 
 module.exports = MainApp;
